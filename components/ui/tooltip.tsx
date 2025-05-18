@@ -55,8 +55,3 @@ export const TooltipContent = React.forwardRef<
   />
 ))
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
-
-// Exportações do Tooltip
-export {
-  TooltipPrimitive
-}
