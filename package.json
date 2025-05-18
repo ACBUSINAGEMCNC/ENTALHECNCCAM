@@ -7,10 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "export": "next build && next export",
-    "deploy": "gh-pages -d out"
+    "export": "next build",
+    "deploy": "node scripts/deploy.js"
   },
-  "homepage": "https://seu-usuario.github.io/entalhecnccam",
+  "homepage": "https://acbusinagemcnc.github.io/ENTALHECNCCAM",
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.2",
