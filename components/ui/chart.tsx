@@ -144,21 +144,26 @@ const ChartTooltipContent = React.forwardRef<
       const value =
         !labelKey && typeof label === "string"
           ? config[label as keyof typeof config]?.label || label
-          : itemConfig?.label
+          : label
 
-      if (labelFormatter) {
-        return (
-          <div className={cn("font-medium", labelClassName)}>
-            {labelFormatter(value, payload)}
-          </div>
-        )
-      }
-
-      if (!value) {
-        return null
-      }
-
-      return <div className={cn("font-medium", labelClassName)}>{value}</div>
+      return (
+        <div
+          className={cn(
+            "mb-1 flex items-center gap-1.5 text-xs font-medium text-foreground",
+            labelClassName
+          )}
+        >
+          {typeof value === "string" ? (
+            labelFormatter ? (
+              labelFormatter(value, payload)
+            ) : (
+              value
+            )
+          ) : (
+            value
+          )}
+        </div>
+      )
     }, [
       label,
       labelFormatter,
@@ -209,13 +214,10 @@ const ChartTooltipContent = React.forwardRef<
                         <div
                           className={cn(
                             "shrink-0 rounded-[2px] border-[--color-border] bg-[--color-bg]",
-                            {
-                              "h-2.5 w-2.5": indicator === "dot",
-                              "w-1": indicator === "line",
-                              "w-0 border-[1.5px] border-dashed bg-transparent":
-                                indicator === "dashed",
-                              "my-0.5": nestLabel && indicator === "dashed",
-                            }
+                            indicator === "dot" && "h-2.5 w-2.5",
+                            indicator === "line" && "w-1",
+                            indicator === "dashed" && "w-0 border-[1.5px] border-dashed bg-transparent",
+                            nestLabel && indicator === "dashed" && "my-0.5"
                           )}
                           style={
                             {
