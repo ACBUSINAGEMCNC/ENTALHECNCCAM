@@ -1,0 +1,30 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # Quando você fizer um push para o branch 'main'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'  # Defina a versão do Node.js que seu projeto usa
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build the project
+        run: npm run build  # Ajuste se você tiver um script diferente de build
+
+      - name: Deploy to GitHub Pages
+        run: |
+          npm install --save gh-pages
+          npm run deploy  # Esse comando vai ser configurado no seu package.json
