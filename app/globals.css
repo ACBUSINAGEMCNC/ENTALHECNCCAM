@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #cc0000;
+  --secondary: #222;
+  --light: #f8f9fa;
+  --dark: #121212;
+  --success: #28a745;
+  --warning: #ffc107;
+  --info: #17a2b8;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--light);
+  color: var(--secondary);
+}
+
+/* Dark mode styles */
+body.dark {
+  background-color: #1a1a1a;
+  color: #f0f0f0;
+}
+
+body.dark .input-panel,
+body.dark .code-output,
+body.dark .visualization {
+  background-color: #2a2a2a;
+  color: #f0f0f0;
+  border: 1px solid #444;
+}
+
+body.dark input[type="number"] {
+  background-color: #333;
+  color: #f0f0f0;
+  border-color: #555;
+}
+
+body.dark .machine-info {
+  background-color: #333;
+}
+
+body.dark h2 {
+  border-bottom-color: #444;
+}
+
+body.dark .field-description {
+  color: #aaa;
+}
+
+/* Message styles */
+.message {
+  margin-top: 20px;
+  padding: 10px;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.message.info {
+  background-color: #e2e3e4;
+  color: #383d41;
+  border: 1px solid #d3d6da;
+}
+
+/* Smooth transitions */
+* {
+  transition: all 0.2s ease-in-out;
+}
