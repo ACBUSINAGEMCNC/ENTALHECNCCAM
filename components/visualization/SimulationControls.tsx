@@ -12,6 +12,8 @@ interface SimulationControlsProps {
   setZoomLevel: (zoom: number) => void
   hasSimulationData: boolean
   saveGCode: () => void
+  blockByBlockMode: boolean
+  stepBlock: () => void
 }
 
 /**
@@ -30,6 +32,8 @@ export function SimulationControls({
   setZoomLevel,
   hasSimulationData,
   saveGCode,
+  blockByBlockMode,
+  stepBlock,
 }: SimulationControlsProps) {
   return (
     <div className="simulation-controls mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded">
@@ -43,11 +47,19 @@ export function SimulationControls({
           {simulationActive ? "Parar Simulação" : "Iniciar Simulação"}
         </button>
         <button
-          className="btn btn-secondary bg-gray-600 text-white px-4 py-2 rounded font-medium transition-colors"
+          className={`btn ${simulationPaused ? "btn-primary bg-primary" : "btn-secondary bg-gray-600"} text-white px-4 py-2 rounded font-medium transition-colors`}
           onClick={togglePause}
-          disabled={!simulationActive || !hasSimulationData}
+          disabled={!simulationActive || !hasSimulationData || blockByBlockMode}
         >
+          <span className="icon">{simulationPaused ? "▶️" : "⏸️"}</span>
           {simulationPaused ? "Continuar" : "Pausar"}
+        </button>
+        <button
+          className={`btn ${blockByBlockMode ? "btn-primary bg-primary" : "btn-secondary bg-gray-600"} text-white px-4 py-2 rounded font-medium transition-colors`}
+          onClick={stepBlock}
+          disabled={!hasSimulationData}
+        >
+          <span className="icon mr-1">⏭️</span> Bloco a Bloco
         </button>
         <button
           className="btn btn-secondary bg-gray-600 text-white px-4 py-2 rounded font-medium transition-colors"

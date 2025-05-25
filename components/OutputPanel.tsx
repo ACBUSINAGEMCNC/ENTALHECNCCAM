@@ -19,6 +19,7 @@ export default function OutputPanel() {
   const [currentFrame, setCurrentFrame] = useState(0)
   const [zoomLevel, setZoomLevel] = useState(1)
   const [simulationSpeed, setSimulationSpeed] = useState(1)
+  const [blockByBlockMode, setBlockByBlockMode] = useState(false)
 
   const { gCode, simulationFrames, setSimulationFrames } = useSimulation()
   const animationRef = useRef<number | null>(null)
@@ -35,12 +36,24 @@ export default function OutputPanel() {
 
   // Handle animation frame updates
   useEffect(() => {
-    if (simulationActive && !simulationPaused) {
+    // Cancel any existing animation when component updates
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+      animationRef.current = null
+    }
+
+    // Only start animation if active, not paused, and not in block-by-block mode
+    if (simulationActive && !simulationPaused && !blockByBlockMode) {
+      let timeoutId: NodeJS.Timeout | null = null
+
       const animate = () => {
         setCurrentFrame((prev) => {
           // If we've reached the end, stop the simulation
           if (prev >= (simulationFrames?.length || 0) - 1) {
-            setSimulationActive(false)
+            // Use setTimeout to avoid state update during render
+            setTimeout(() => {
+              setSimulationActive(false)
+            }, 0)
             return 0
           }
 
@@ -49,26 +62,33 @@ export default function OutputPanel() {
           return prev + increment
         })
 
-        // Schedule next frame
-        const frameDelay = simulationSpeed <= 1 ? 50 / simulationSpeed : 50 / Math.sqrt(simulationSpeed)
-        const timeoutId = setTimeout(() => {
-          if (simulationActive && !simulationPaused) {
+        // Clear previous timeout
+        if (timeoutId) clearTimeout(timeoutId)
+
+        // Schedule next frame with delay based on speed
+        const frameDelay = simulationSpeed <= 1 ? 100 / simulationSpeed : 100 / Math.sqrt(simulationSpeed)
+        
+        timeoutId = setTimeout(() => {
+          // Double-check state hasn't changed before requesting next frame
+          if (simulationActive && !simulationPaused && !blockByBlockMode) {
             animationRef.current = requestAnimationFrame(animate)
           }
         }, frameDelay)
-
-        return () => clearTimeout(timeoutId)
       }
 
+      // Start the animation loop
       animationRef.current = requestAnimationFrame(animate)
 
+      // Clean up function
       return () => {
+        if (timeoutId) clearTimeout(timeoutId)
         if (animationRef.current) {
           cancelAnimationFrame(animationRef.current)
+          animationRef.current = null
         }
       }
     }
-  }, [simulationActive, simulationPaused, simulationSpeed, simulationFrames])
+  }, [simulationActive, simulationPaused, simulationSpeed, simulationFrames, blockByBlockMode])
 
   // Toggle simulation state
   const toggleSimulation = () => {
@@ -77,18 +97,84 @@ export default function OutputPanel() {
       return
     }
 
-    setSimulationActive((prev) => !prev)
-    setSimulationPaused(false)
+    // If we're stopping the simulation, reset everything
+    if (simulationActive) {
+      // Stop the simulation
+      setSimulationActive(false)
+      setSimulationPaused(false)
+      setBlockByBlockMode(false)
+      
+      // Cancel any existing animation
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+        animationRef.current = null
+      }
+    } else {
+      // Start the simulation
+      setSimulationActive(true)
+      setSimulationPaused(false)
+      setBlockByBlockMode(false)
+    }
   }
 
   // Toggle pause state
   const togglePause = () => {
-    setSimulationPaused((prev) => !prev)
+    if (!simulationActive) return;
+    
+    // When unpausing, cancel block by block mode if it was active
+    if (simulationPaused) {
+      setBlockByBlockMode(false)
+    }
+    
+    // Toggle pause state
+    setSimulationPaused(prev => !prev)
+    
+    // Cancel any ongoing animation when pausing
+    if (!simulationPaused && animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+      animationRef.current = null
+    }
   }
 
   // Reset simulation to beginning
   const restartSimulation = () => {
     setCurrentFrame(0)
+    // Keep simulation paused and in block by block mode if they were active
+  }
+  
+  // Step one block at a time
+  const stepBlock = () => {
+    if (!simulationFrames || simulationFrames.length === 0) {
+      showMessage("Nenhum código gerado para simular!", "error")
+      return;
+    }
+    
+    // Cancel any running animation
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+      animationRef.current = null
+    }
+    
+    // If not already in block-by-block mode, enter it
+    if (!blockByBlockMode) {
+      setBlockByBlockMode(true);
+      setSimulationActive(true);
+      setSimulationPaused(true); // Actually paused but in block-by-block mode
+    }
+    
+    // Move to next block/frame
+    setCurrentFrame(prev => {
+      const nextFrame = prev + 1;
+      if (nextFrame >= (simulationFrames?.length || 0)) {
+        // End reached, reset
+        setTimeout(() => {
+          setSimulationActive(false);
+          setBlockByBlockMode(false);
+        }, 0);
+        return 0;
+      }
+      return nextFrame;
+    });
   }
 
   // Save G-code to file
@@ -162,6 +248,8 @@ export default function OutputPanel() {
           setZoomLevel={setZoomLevel}
           hasSimulationData={!!simulationFrames && simulationFrames.length > 0}
           saveGCode={saveGCode}
+          blockByBlockMode={blockByBlockMode}
+          stepBlock={stepBlock}
         />
 
         <div id="messageContainer" className="message info hidden mt-5 p-3 rounded text-center font-medium"></div>
