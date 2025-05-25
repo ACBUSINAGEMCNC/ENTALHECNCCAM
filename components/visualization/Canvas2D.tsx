@@ -46,6 +46,19 @@ export function Canvas2D({ simulationFrames, currentFrame, zoomLevel, setZoomLev
 
     // Draw simulation path if available
     if (simulationFrames.length > 0) {
+      // Draw the workpiece (rotating cylinder in 2D)
+      if (currentFrame < simulationFrames.length) {
+        drawWorkpiece(
+          ctx, 
+          simulationFrames[currentFrame],
+          canvas.width,
+          canvas.height,
+          zoomLevel,
+          panOffsetXRef.current,
+          panOffsetYRef.current
+        );
+      }
+      
       drawSimulationPath(
         ctx,
         simulationFrames,
@@ -187,7 +200,10 @@ export function Canvas2D({ simulationFrames, currentFrame, zoomLevel, setZoomLev
   return (
     <>
       <canvas ref={canvasRef} className="w-full h-full" />
-      <div className="angle-indicator absolute top-5 right-5 w-[100px] h-[100px] rounded-full border-2 border-gray-700 bg-white/80 overflow-hidden">
+      <div className="angle-display absolute top-2 right-5 px-3 py-1 bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-600 shadow-sm text-center font-bold text-lg" id="angleDisplayTop">
+        A: 0.0°
+      </div>
+      <div className="angle-indicator absolute top-14 right-5 w-[100px] h-[100px] rounded-full border-2 border-gray-700 bg-white/80 overflow-hidden">
         <div className="angle-fill absolute inset-0 bg-primary/20 origin-center" id="angleFill"></div>
         <div className="angle-center absolute top-1/2 left-1/2 w-[10px] h-[10px] bg-gray-700 rounded-full transform -translate-x-1/2 -translate-y-1/2"></div>
         <div
@@ -271,6 +287,65 @@ function drawCoordinateSystem(
       ctx.fillText(i.toString(), originX - 10, posY + 4)
     }
   }
+}
+
+// Helper function to draw the workpiece in 2D
+function drawWorkpiece(
+  ctx: CanvasRenderingContext2D,
+  frame: SimulationFrame,
+  width: number,
+  height: number,
+  zoomLevel: number,
+  panOffsetX: number,
+  panOffsetY: number,
+) {
+  const padding = 40;
+  const originX = (padding * 2 + panOffsetX) * zoomLevel;
+  const originY = (height / 2 + panOffsetY) * zoomLevel;
+  
+  // Convert A angle to radians
+  const angleRadians = (frame.a * Math.PI) / 180;
+  
+  // Draw circle representing the cylinder from top view
+  const radius = 20 * zoomLevel; // Workpiece radius
+  
+  ctx.save();
+  
+  // Translate to the origin point
+  ctx.translate(originX, originY);
+  
+  // Draw the main circle (cylinder outline)
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  
+  // Fill with a light color
+  ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+  ctx.fill();
+  
+  // Draw a reference line to show rotation
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(radius * Math.cos(angleRadians), radius * Math.sin(angleRadians));
+  ctx.strokeStyle = '#cc0000';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Draw a small marker at the end of the line
+  ctx.beginPath();
+  ctx.arc(radius * Math.cos(angleRadians), radius * Math.sin(angleRadians), 3, 0, Math.PI * 2);
+  ctx.fillStyle = '#cc0000';
+  ctx.fill();
+  
+  // Add text showing the current A angle
+  ctx.fillStyle = '#333';
+  ctx.font = '10px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(`A: ${frame.a.toFixed(1)}°`, 0, -radius - 10);
+  
+  ctx.restore();
 }
 
 // Helper function to draw simulation path

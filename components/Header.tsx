@@ -6,7 +6,7 @@
  */
 export default function Header() {
   return (
-    <header className="bg-dark text-white py-4 shadow-md">
+    <header className="bg-gray-800 text-white dark:bg-neutral-900 dark:text-gray-100 py-4 shadow-md">
       <div className="container max-w-7xl mx-auto px-4">
         <div className="header-content flex items-center justify-between">
           <div className="logo flex items-center">
@@ -24,7 +24,7 @@ export default function Header() {
             <strong>Gerador de Código G para Usinagem de Entalhes</strong>
             <button
               id="btnHelp"
-              className="btn btn-secondary ml-4 px-4 py-2 bg-secondary text-white rounded"
+              className="btn btn-secondary ml-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-white rounded"
               onClick={() => document.getElementById("helpPanel")?.style.setProperty("display", "flex")}
             >
               Ajuda

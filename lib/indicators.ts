@@ -1,3 +1,6 @@
+// Store the maximum A-axis value seen so far
+let maxAngle = 0;
+
 /**
  * Updates the angle indicator display
  *
@@ -7,17 +10,33 @@ export function updateAngleIndicator(angle: number): void {
   const needle = document.getElementById("angleNeedle")
   const valueDisplay = document.getElementById("angleValue")
   const angleFill = document.getElementById("angleFill")
+  const angleDisplayTop = document.getElementById("angleDisplayTop")
+
+  // Track the maximum angle for fill visualization
+  maxAngle = Math.max(maxAngle, Math.abs(angle))
+  
+  // Update the top angle display if it exists
+  if (angleDisplayTop) {
+    angleDisplayTop.textContent = `A: ${angle.toFixed(1)}°`
+  }
 
   if (needle && valueDisplay && angleFill) {
-    // Update needle rotation
+    // Update needle rotation - show current position
     needle.style.transform = `rotate(${angle}deg)`
 
-    // Update angle value text
+    // Update angle value text - show current value
     valueDisplay.textContent = `${angle.toFixed(1)}°`
 
-    // Update angle fill
-    const clipPath = calculateClipPath(angle)
+    // For the fill, we'll show how much of 360° we've rotated
+    // If we've gone beyond 360°, the fill will be complete
+    const fillAngle = Math.min(Math.abs(angle), 360);
+    const clipPath = calculateClipPath(fillAngle)
     angleFill.style.clipPath = clipPath
+    
+    // Change color intensity based on how many full rotations we've done
+    const rotations = Math.floor(Math.abs(angle) / 360);
+    const opacity = Math.min(0.2 + (rotations * 0.2), 0.8); // Increase opacity with rotations
+    angleFill.style.backgroundColor = `rgba(204, 0, 0, ${opacity})`;
   }
 }
 
@@ -28,27 +47,32 @@ export function updateAngleIndicator(angle: number): void {
  * @returns CSS clip-path value
  */
 function calculateClipPath(angle: number): string {
-  // Normalize angle to 0-360
-  const normalizedAngle = angle % 360
-  if (normalizedAngle === 0) {
-    return "polygon(50% 50%, 50% 0%, 50% 0%)"
+  // Handle special cases
+  if (angle === 0) {
+    return "polygon(50% 50%, 50% 0%, 50% 0%)";
+  }
+  
+  // For a full circle (360 degrees)
+  if (angle >= 360) {
+    return "circle(50% at 50% 50%)";
   }
 
   // Calculate points to create circular sector
-  const points: string[] = []
-  points.push("50% 50%") // Center
-  points.push("50% 0%") // Starting point (top)
+  const points: string[] = [];
+  points.push("50% 50%"); // Center
+  points.push("50% 0%"); // Starting point (top)
 
   // Add intermediate points for a smooth curve
-  const steps = Math.max(2, Math.floor(normalizedAngle / 10))
+  // More points for a smoother curve
+  const steps = Math.max(36, Math.floor(angle / 10)); 
   for (let i = 1; i <= steps; i++) {
-    const stepAngle = (((normalizedAngle * i) / steps) * Math.PI) / 180
-    const x = 50 + 50 * Math.sin(stepAngle)
-    const y = 50 - 50 * Math.cos(stepAngle)
-    points.push(`${x}% ${y}%`)
+    const stepAngle = ((angle * i) / steps) * (Math.PI / 180);
+    const x = 50 + 50 * Math.sin(stepAngle);
+    const y = 50 - 50 * Math.cos(stepAngle);
+    points.push(`${x}% ${y}%`);
   }
 
-  return `polygon(${points.join(", ")})`
+  return `polygon(${points.join(", ")})`;  
 }
 
 /**

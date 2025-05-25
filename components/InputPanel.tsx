@@ -430,14 +430,14 @@ export default function InputPanel() {
         <div className="btn-group flex gap-3 mt-5">
           <button
             id="btnGerar"
-            className="btn btn-primary bg-primary text-white px-4 py-2 rounded font-medium transition-colors hover:bg-red-700"
+            className="btn btn-primary bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white px-4 py-2 rounded font-medium transition-colors"
             onClick={handleGenerateGCode}
           >
             <span className="icon">⚙️</span> Gerar Código G
           </button>
           <button
             id="btnSalvar"
-            className="btn btn-secondary bg-secondary text-white px-4 py-2 rounded font-medium transition-colors hover:bg-gray-700"
+            className="btn btn-secondary bg-gray-600 hover:bg-gray-700 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-white px-4 py-2 rounded font-medium transition-colors"
             disabled={!gCode || gCode.length === 0}
             onClick={() => {
               if (gCode && gCode.length > 0) {

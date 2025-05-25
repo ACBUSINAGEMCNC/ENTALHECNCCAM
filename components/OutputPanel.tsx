@@ -27,7 +27,8 @@ export default function OutputPanel() {
   // Process G-code for simulation when it changes
   useEffect(() => {
     if (gCode && gCode.length > 0) {
-      const frames = processGCodeForSimulation(gCode)
+      const frames = processGCodeForSimulation(gCode);
+      console.log('Processed Simulation Frames:', frames);
       setSimulationFrames(frames)
       setCurrentFrame(0)
       showMessage("Simulação pronta! Clique em Iniciar Simulação para visualizar.", "success")
@@ -200,30 +201,51 @@ export default function OutputPanel() {
   }
 
   return (
-    <div className="output-panel flex-1 flex flex-col">
-      <div className="code-output bg-white dark:bg-gray-800 rounded-lg p-5 shadow-sm h-72 overflow-auto font-mono mb-5">
-        {gCode && gCode.length > 0 ? (
-          <pre className="text-sm">{gCode.join("\n")}</pre>
-        ) : (
-          <em className="text-gray-500">O código G será gerado aqui...</em>
-        )}
+    <div className="output-panel flex-1 flex flex-col max-w-full">
+      {/* Área de código G */}
+      <div className="code-output bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-5 shadow-md h-72 overflow-auto font-mono mb-5 transition-colors">
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-gray-800 dark:text-gray-200 text-lg font-semibold">Código G Gerado</h2>
+          {gCode && gCode.length > 0 && (
+            <button 
+              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 text-sm flex items-center transition-colors"
+              onClick={saveGCode}
+            >
+              <span className="mr-1">💾</span> Salvar
+            </button>
+          )}
+        </div>
+        
+        <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 transition-colors">
+          {gCode && gCode.length > 0 ? (
+            <pre className="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto">{gCode.join("\n")}</pre>
+          ) : (
+            <em className="text-gray-500 dark:text-gray-400 block text-center py-4">O código G será gerado aqui...</em>
+          )}
+        </div>
       </div>
 
-      <div className="visualization bg-white dark:bg-gray-800 rounded-lg p-5 shadow-sm flex-grow relative">
-        <h2 className="text-primary text-xl font-semibold mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-          Visualização da Simulação
-        </h2>
+      {/* Área de visualização */}
+      <div className="visualization bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-5 shadow-md flex-grow relative transition-colors">
+        <div className="flex flex-wrap justify-between items-center mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-blue-600 dark:text-blue-400 text-xl font-semibold">
+            Visualização da Simulação
+          </h2>
 
-        <div className="view-toggle mb-3 text-right">
-          <button
-            className="btn btn-secondary bg-secondary text-white px-3 py-1 rounded text-sm"
-            onClick={() => setIs3DMode((prev) => !prev)}
-          >
-            Alternar 2D/3D
-          </button>
+          <div className="view-toggle">
+            <button
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${is3DMode 
+                ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300" 
+                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"}`}
+              onClick={() => setIs3DMode((prev) => !prev)}
+            >
+              <span className="mr-1">{is3DMode ? "3D" : "2D"}</span> 
+              <span className="hidden sm:inline">Visualização</span>
+            </button>
+          </div>
         </div>
 
-        <div className="canvas-container relative w-full h-[350px] border border-gray-200 rounded overflow-hidden bg-gray-50 dark:bg-gray-900 dark:border-gray-700">
+        <div className="canvas-container relative w-full h-[250px] sm:h-[350px] border border-gray-200 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900 dark:border-gray-700 shadow-inner transition-all">
           {is3DMode ? (
             <Canvas3D simulationFrames={simulationFrames || []} currentFrame={currentFrame} />
           ) : (
@@ -233,6 +255,13 @@ export default function OutputPanel() {
               zoomLevel={zoomLevel}
               setZoomLevel={setZoomLevel}
             />
+          )}
+          
+          {/* Indicador de frame atual */}
+          {simulationFrames && simulationFrames.length > 0 && (
+            <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded-md text-xs">
+              Frame: {currentFrame + 1}/{simulationFrames.length}
+            </div>
           )}
         </div>
 
