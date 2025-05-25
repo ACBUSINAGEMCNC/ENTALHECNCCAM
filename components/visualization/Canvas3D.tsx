@@ -138,7 +138,7 @@ export function Canvas3D({ simulationFrames, currentFrame }: Canvas3DProps) {
 
     // Clean up scene - remove all objects except grid, axes and lights
     const objectsToRemove: THREE.Object3D[] = [];
-    sceneRef.current.children.forEach((child) => {
+    sceneRef.current.children.forEach((child: THREE.Object3D) => {
       // Keep only the grid, axes helper, and lights
       const isGrid = child instanceof THREE.GridHelper;
       const isAxes = child instanceof THREE.AxesHelper;
