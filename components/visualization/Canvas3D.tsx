@@ -4,7 +4,7 @@ import { useRef, useEffect } from "react"
 import type { SimulationFrame } from "@/types/simulation"
 import { updateAngleIndicator, updatePositionIndicator } from "@/lib/indicators"
 import * as THREE from "three"
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 
 interface Canvas3DProps {
   simulationFrames: SimulationFrame[]
@@ -22,175 +22,246 @@ export function Canvas3D({ simulationFrames, currentFrame }: Canvas3DProps) {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const toolRef = useRef<THREE.Group | null>(null)
+  const axesRef = useRef<THREE.AxesHelper | null>(null)
+  const gridRef = useRef<THREE.GridHelper | null>(null)
 
-  // Initialize 3D scene
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    // Clear any existing content
-    containerRef.current.innerHTML = ""
-
-    // Create scene
-    const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0xf0f0f0)
-    sceneRef.current = scene
-
-    // Create camera
-    const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight
-    const camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000)
-    camera.position.set(100, 100, 100) // Position camera at a good viewing angle
-    camera.lookAt(0, 0, 0)
-    cameraRef.current = camera
-
-    // Create renderer with clear configuration
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
-      alpha: true,
-      preserveDrawingBuffer: false 
-    })
-    renderer.setPixelRatio(window.devicePixelRatio)
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight)
-    renderer.setClearColor(0xf0f0f0, 1) // Explicit clear color
-    containerRef.current.appendChild(renderer.domElement)
-    rendererRef.current = renderer
-
-    // Add lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7)
-    scene.add(ambientLight)
+  // Add legend for G0/G1
+  const addLegend = () => {
+    if (!sceneRef.current) return;
     
-    // Add directional light for better depth perception
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5)
-    directionalLight.position.set(1, 1, 1)
-    scene.add(directionalLight)
+    // Remove existing legend
+    sceneRef.current.children.forEach(child => {
+      if (child.userData.isLegend) {
+        sceneRef.current!.remove(child);
+      }
+    });
+    
+    // G0 legend (red)
+    const g0Line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-90, 80, 0),
+        new THREE.Vector3(-70, 80, 0)
+      ]),
+      new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 4 })
+    );
+    g0Line.userData.isLegend = true;
+    
+    // G1 legend (blue)
+    const g1Line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-90, 70, 0),
+        new THREE.Vector3(-70, 70, 0)
+      ]),
+      new THREE.LineBasicMaterial({ color: 0x00aaff, linewidth: 3 })
+    );
+    g1Line.userData.isLegend = true;
+    
+    // Add to scene
+    sceneRef.current.add(g0Line);
+    sceneRef.current.add(g1Line);
+  };
+  
+  // Initialize 3D scene with correct CNC axes
+  useEffect(() => {
+    if (!containerRef.current) return;
 
-    // Add axes helper - colored arrows showing X,Y,Z directions
-    const axesHelper = new THREE.AxesHelper(50)
-    scene.add(axesHelper)
+    // Clear existing content
+    while (containerRef.current.firstChild) {
+      containerRef.current.removeChild(containerRef.current.firstChild);
+    }
 
-    // Add grid on XZ plane
-    const gridHelper = new THREE.GridHelper(200, 20, 0x888888, 0x444444)
-    scene.add(gridHelper)
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x121212);
+    sceneRef.current = scene;
 
-    // Add orbit controls
-    const controls = new OrbitControls(camera, renderer.domElement)
-    controls.enableDamping = true
-    controls.dampingFactor = 0.05
-    controls.screenSpacePanning = true
-    controlsRef.current = controls
+    // Camera setup - view aligned with standard CNC coordinates
+    const aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+    const camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
+    camera.position.set(150, -150, 150); // View from top-front-right
+    camera.lookAt(0, 0, 0);
+    cameraRef.current = camera;
+
+    // Correct CNC coordinate system:
+    // X: Red (right/left)
+    // Y: Blue (up/down) - This will be our vertical axis
+    // Z: Green (front/back) - This will rotate around Y (A-axis)
+
+    // Main grid (X-Z plane - horizontal floor)
+    const grid = new THREE.GridHelper(200, 20, 0x555555, 0x333333);
+    scene.add(grid);
+
+    // Vertical grid (X-Y plane)
+    const verticalGrid = new THREE.GridHelper(200, 20, 0x444444, 0x222222);
+    verticalGrid.rotation.x = Math.PI / 2;
+    scene.add(verticalGrid);
+
+    // Axes helper with CNC standard colors
+    const axesHelper = new THREE.AxesHelper(50);
+    scene.add(axesHelper);
+
+    // Create renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x404040);
+    scene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
+
+    // Create tool representation (for A-axis rotation)
+    const toolGroup = new THREE.Group();
+    
+    // Tool geometry (arrow for direction)
+    const toolGeometry = new THREE.CylinderGeometry(0.5, 0, 5, 8);
+    const toolMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+    const toolArrow = new THREE.Mesh(toolGeometry, toolMaterial);
+    toolArrow.rotation.x = Math.PI / 2;
+    toolArrow.position.y = 5;
+    
+    toolGroup.add(toolArrow);
+    scene.add(toolGroup);
+    toolRef.current = toolGroup;
+
+    // Orbit controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controlsRef.current = controls;
 
     // Animation loop
     const animate = () => {
-      animationFrameRef.current = requestAnimationFrame(animate)
-
-      if (controlsRef.current) {
-        controlsRef.current.update()
-      }
-
-      if (rendererRef.current && sceneRef.current && cameraRef.current) {
-        rendererRef.current.render(sceneRef.current, cameraRef.current)
-      }
-    }
-
-    animate()
+      animationFrameRef.current = requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    animate();
 
     // Handle window resize
     const handleResize = () => {
-      if (!containerRef.current || !cameraRef.current || !rendererRef.current) return
-
-      const width = containerRef.current.clientWidth
-      const height = containerRef.current.clientHeight
-
-      cameraRef.current.aspect = width / height
-      cameraRef.current.updateProjectionMatrix()
-      rendererRef.current.setSize(width, height)
-    }
-
-    window.addEventListener("resize", handleResize)
+      if (!containerRef.current || !camera || !renderer) return;
+      const width = containerRef.current.clientWidth;
+      const height = containerRef.current.clientHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    };
+    window.addEventListener('resize', handleResize);
 
     return () => {
-      window.removeEventListener("resize", handleResize)
+      window.removeEventListener('resize', handleResize);
+      cancelAnimationFrame(animationFrameRef.current!);
+      controls.dispose();
+      renderer.dispose();
+    };
+  }, []);
 
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-
-      if (rendererRef.current && rendererRef.current.domElement && rendererRef.current.domElement.parentNode) {
-        rendererRef.current.domElement.parentNode.removeChild(rendererRef.current.domElement)
-      }
-
-      // Dispose of Three.js resources
-      if (rendererRef.current) {
-        rendererRef.current.dispose()
-      }
-    }
-  }, [])
-
-  // Create or update trajectory lines when simulation frames change
+  // Progressively build the tool path during simulation
   useEffect(() => {
-    if (!sceneRef.current || simulationFrames.length === 0) return
+    // Add legend
+    addLegend();
+    if (!sceneRef.current || !simulationFrames.length || currentFrame === undefined) return;
 
-    // Update position and angle indicators
-    if (currentFrame < simulationFrames.length) {
-      const frame = simulationFrames[currentFrame]
-      updatePositionIndicator(frame.x || 0, frame.y, frame.z)
-      updateAngleIndicator(frame.a)
-    }
-
-    // Clean up scene - remove all objects except grid, axes and lights
-    const objectsToRemove: THREE.Object3D[] = [];
-    sceneRef.current.children.forEach((child: THREE.Object3D) => {
-      // Keep only the grid, axes helper, and lights
-      const isGrid = child instanceof THREE.GridHelper;
-      const isAxes = child instanceof THREE.AxesHelper;
-      const isLight = child instanceof THREE.Light;
-      
-      // Remove everything else (any tool paths, cylinders, or other objects)
-      if (!isGrid && !isAxes && !isLight) {
-        objectsToRemove.push(child);
+    // Clear previous tool paths
+    sceneRef.current.children.forEach(child => {
+      if (child.userData.isToolPath) {
+        sceneRef.current!.remove(child);
       }
     });
+
+    // Define types for our segments
+    interface PathSegment {
+      points: THREE.Vector3[];
+      isG0: boolean;
+    }
+
+    // Create segmented path with G0/G1 coloring up to current frame
+    const lineSegments: PathSegment[] = [];
+    let currentSegment: THREE.Vector3[] = [];
+    let currentMode = '';
     
-    // Remove the identified objects
-    objectsToRemove.forEach((obj) => {
-      sceneRef.current?.remove(obj);
+    // Only process frames up to the current frame
+    const visibleFrames = simulationFrames.slice(0, currentFrame + 1);
+    
+    visibleFrames.forEach((frame: SimulationFrame & { gCode?: string }, index) => {
+      const angle = frame.a * (Math.PI / 180);
+      const x = frame.x * Math.cos(angle) - frame.y * Math.sin(angle);
+      const y = frame.x * Math.sin(angle) + frame.y * Math.cos(angle);
+      const z = frame.z;
+      
+      // Detect G0/G1 changes (fallback to G1 if not specified, case insensitive)
+      const frameGCode = (frame.gCode || 'G1').toUpperCase();
+      if (frameGCode !== currentMode) {
+        if (currentSegment.length > 0) {
+          lineSegments.push({
+            points: currentSegment,
+            isG0: currentMode === 'G0'
+          });
+        }
+        currentSegment = [];
+        currentMode = frameGCode;
+      }
+      
+      currentSegment.push(new THREE.Vector3(x, z, y));
+      
+      // Add last segment
+      if (index === visibleFrames.length - 1) {
+        lineSegments.push({
+          points: currentSegment,
+          isG0: currentMode === 'G0'
+        });
+      }
     });
 
-    // Separate points by command type
-    const g0Points: THREE.Vector3[] = []
-    const g1Points: THREE.Vector3[] = []
-
-    simulationFrames.forEach((frame) => {
-      // Use proper CNC machine coordinates:
-      // X and Y are horizontal, Z is vertical (up)
-      const point = new THREE.Vector3(frame.x || 0, frame.z, frame.y)
-
-      if (frame.cmd === "G0") {
-        g0Points.push(point)
-      } else if (frame.cmd === "G1") {
-        g1Points.push(point)
+    // Create lines with appropriate colors
+    lineSegments.forEach(segment => {
+      if (segment.points.length > 1 && sceneRef.current) {
+        const geometry = new THREE.BufferGeometry().setFromPoints(segment.points);
+        const material = new THREE.LineBasicMaterial({
+          color: segment.isG0 ? 0xff0000 : 0x00aaff, // Strong red for G0, blue for G1
+          linewidth: segment.isG0 ? 4 : 3 // Thicker line for G0
+        });
+        const line = new THREE.Line(geometry, material);
+        line.userData.isToolPath = true;
+        sceneRef.current.add(line);
       }
-    })
+    });
 
-    // Create G0 (rapid) lines with enhanced visibility
-    if (g0Points.length > 1) {
-      // Create thicker blue line for rapid moves
-      const g0Material = new THREE.LineBasicMaterial({ color: 0x0066cc, linewidth: 3 })
-      const g0Geometry = new THREE.BufferGeometry().setFromPoints(g0Points)
-      const g0Line = new THREE.Line(g0Geometry, g0Material)
-      ;(g0Line as any).isLine = true
-      sceneRef.current.add(g0Line)
+    // Update current position
+    if (currentFrame !== undefined && currentFrame < simulationFrames.length) {
+      const frame = simulationFrames[currentFrame];
+      const angle = frame.a * (Math.PI / 180);
+      
+      // Calculate rotated position
+      const x = frame.x * Math.cos(angle) - frame.y * Math.sin(angle);
+      const y = frame.x * Math.sin(angle) + frame.y * Math.cos(angle);
+      const z = frame.z;
+      
+      // Update indicators with original values
+      updatePositionIndicator(frame.x, frame.y, frame.z);
+      updateAngleIndicator(frame.a);
+      
+      // Highlight current position (rotated)
+      // Determine if this is a G0 movement
+      const isG0Movement = ((frame as any).gCode || 'G1').toUpperCase() === 'G0';
+      
+      const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(3, 16, 16),
+        new THREE.MeshBasicMaterial({ 
+          color: isG0Movement ? 0xff0000 : 0x00aaff // Match line color
+        })
+      );
+      sphere.position.set(x, z, y); // Note: Y and Z swapped for correct display
+      sphere.userData.isToolPath = true;
+      sceneRef.current.add(sphere);
     }
-
-    // Create G1 (cutting) lines with enhanced visibility
-    if (g1Points.length > 1) {
-      // Create thicker red line for cutting moves
-      const g1Material = new THREE.LineBasicMaterial({ color: 0xcc0000, linewidth: 4 })
-      const g1Geometry = new THREE.BufferGeometry().setFromPoints(g1Points)
-      const g1Line = new THREE.Line(g1Geometry, g1Material)
-      ;(g1Line as any).isLine = true
-      sceneRef.current.add(g1Line)
-    }
-  }, [simulationFrames, currentFrame])
+  }, [simulationFrames, currentFrame]);
 
   return (
     <>
