@@ -13,18 +13,18 @@ export default function HelpPanel() {
       >
         &times;
       </button>
-      <div className="help-content bg-white rounded-lg p-5 max-w-2xl max-h-[80vh] overflow-y-auto shadow-lg">
-        <h3 className="text-primary text-xl font-bold mb-4">Ajuda - ENTALHY CNC</h3>
+      <div className="help-content bg-white dark:bg-slate-800 rounded-lg p-5 max-w-2xl max-h-[80vh] overflow-y-auto shadow-lg dark:text-slate-200 border dark:border-slate-700">
+        <h3 className="text-primary dark:text-primary-foreground text-xl font-bold mb-4">Ajuda - ENTALHY CNC</h3>
 
-        <h4 className="font-bold mt-4 mb-2">O que é o ENTALHY CNC?</h4>
+        <h4 className="font-bold mt-4 mb-2 text-foreground dark:text-slate-100">O que é o ENTALHY CNC?</h4>
         <p>
           O ENTALHY CNC é um gerador de código G especializado para usinagem de entalhes e chavetas em peças
           cilíndricas. O aplicativo permite configurar todos os parâmetros necessários e gera automaticamente o código G
           para máquinas CNC.
         </p>
 
-        <h4 className="font-bold mt-4 mb-2">Como usar:</h4>
-        <ol className="list-decimal pl-5 space-y-1">
+        <h4 className="font-bold mt-4 mb-2 text-foreground dark:text-slate-100">Como usar:</h4>
+        <ol className="list-decimal pl-5 space-y-1 text-foreground dark:text-slate-300">
           <li>
             <strong>Configure os parâmetros</strong> - Ajuste todos os valores de acordo com sua necessidade de
             usinagem.
@@ -41,8 +41,8 @@ export default function HelpPanel() {
           </li>
         </ol>
 
-        <h4 className="font-bold mt-4 mb-2">Parâmetros principais:</h4>
-        <ul className="list-disc pl-5 space-y-1">
+        <h4 className="font-bold mt-4 mb-2 text-foreground dark:text-slate-100">Parâmetros principais:</h4>
+        <ul className="list-disc pl-5 space-y-1 text-foreground dark:text-slate-300">
           <li>
             <strong>Ponto Início Z</strong> - Posição inicial da ferramenta no eixo Z.
           </li>
@@ -73,8 +73,8 @@ export default function HelpPanel() {
           </li>
         </ul>
 
-        <h4 className="font-bold mt-4 mb-2">Dicas:</h4>
-        <ul className="list-disc pl-5 space-y-1">
+        <h4 className="font-bold mt-4 mb-2 text-foreground dark:text-slate-100">Dicas:</h4>
+        <ul className="list-disc pl-5 space-y-1 text-foreground dark:text-slate-300">
           <li>Use valores menores de "Material por Passe" para melhor acabamento.</li>
           <li>Ajuste a "Abertura da Chaveta X" de acordo com a ferramenta utilizada.</li>
           <li>Sempre simule o código antes de enviá-lo para a máquina CNC.</li>

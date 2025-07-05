@@ -6,9 +6,9 @@
  */
 export default function Header() {
   return (
-    <header className="bg-gray-800 text-white dark:bg-neutral-900 dark:text-gray-100 py-4 shadow-md">
+    <header className="bg-secondary text-secondary-foreground py-4 shadow-lg border-b">
       <div className="container max-w-7xl mx-auto px-4">
-        <div className="header-content flex items-center justify-between">
+        <div className="header-content flex flex-col sm:flex-row items-center justify-between">
           <div className="logo flex items-center">
             {/* Usando a imagem PNG da logo Entalhy CNC */}
             <img 
@@ -18,13 +18,16 @@ export default function Header() {
               height="150" 
               className="object-contain"
             />
-            <h1 className="text-2xl font-semibold ml-4 sr-only">ENTALHY CNC</h1>
+            <div className="ml-4 flex flex-col">
+              <h1 className="text-2xl font-semibold">ENTALHY CNC</h1>
+              <div className="text-sm font-medium text-accent-foreground">A C B USINAGEM CNC LTDA.</div>
+            </div>
           </div>
-          <div>
+          <div className="mt-3 sm:mt-0 text-center sm:text-right">
             <strong>Gerador de Código G para Usinagem de Entalhes</strong>
             <button
               id="btnHelp"
-              className="btn btn-secondary ml-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 dark:bg-neutral-700 dark:hover:bg-neutral-600 text-white rounded"
+              className="ml-4 px-4 py-2 rounded-md transition-colors bg-muted hover:bg-accent text-muted-foreground"
               onClick={() => document.getElementById("helpPanel")?.style.setProperty("display", "flex")}
             >
               Ajuda

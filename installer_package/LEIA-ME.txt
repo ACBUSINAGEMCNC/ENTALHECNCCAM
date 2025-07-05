@@ -1,0 +1,21 @@
+========================================
+  ENTALHE CNC CAM - INSTRUÇÕES
+========================================
+
+INSTALAÇÃO:
+1. Clique com o botão direito em "instalar.bat"
+2. Selecione "Executar como administrador"
+3. Siga as instruções na tela
+
+LICENÇA:
+A chave de licença será fornecida pelo desenvolvedor.
+Contate support@entalhec.com.br para obter sua licença.
+
+PRIMEIRA EXECUÇÃO:
+Após a instalação, clique no atalho criado na área de trabalho.
+Na primeira execução, você será solicitado a inserir sua chave de licença.
+
+SUPORTE:
+Em caso de dúvidas ou problemas, entre em contato pelo e-mail suporte@entalhec.com.br
+
+========================================

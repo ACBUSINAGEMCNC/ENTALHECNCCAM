@@ -11,6 +11,7 @@ interface MachiningParams {
   ladoCorte: string
   chavetaConica: boolean
   anguloConico: number
+  passoLateral?: number // Passo lateral para múltiplos passes (opcional)
 }
 
 /**
@@ -33,10 +34,53 @@ export function generateGCode(params: MachiningParams): string[] {
   // Calculate angle between notches
   const anguloPasso = 360 / params.numEntalhes
 
-  // Calculate X displacement needed
+  // Calculate X displacement needed and number of passes
   let deslocamentoX = 0
+  let numPassesLaterais = 1
+  let passosX: number[] = [0] // Inicialmente apenas um passe central
+  
   if (params.aberturaChaveta > params.diametroFerramenta) {
-    deslocamentoX = (params.aberturaChaveta - params.diametroFerramenta) / 2
+    // Determinar o passo lateral (usar diâmetro da ferramenta se não especificado)
+    const passoLateral = params.passoLateral && params.passoLateral > 0 
+      ? Math.min(params.passoLateral, params.diametroFerramenta) // Garantir que não seja maior que a ferramenta
+      : params.diametroFerramenta
+    
+    // Calcular a largura efetiva para mecanizar (já descontando o diâmetro da ferramenta)
+    const larguraEfetiva = params.aberturaChaveta - params.diametroFerramenta
+    
+    // Posição X máxima que a ferramenta deve atingir (meio caminho da largura efetiva)
+    const xMaximo = larguraEfetiva / 2
+    
+    // Caso especial: para aberturas até 1.625x o diâmetro da ferramenta, usar apenas 2 passes laterais
+    if (params.aberturaChaveta <= params.diametroFerramenta * 1.625) {
+      // Dois passes simétricos, sem passe central
+      numPassesLaterais = 2;
+      const deslocamento = xMaximo;
+      passosX = [-deslocamento, deslocamento];
+    } else {
+      // Para aberturas maiores, calcular múltiplos passes
+      numPassesLaterais = Math.ceil(larguraEfetiva / (passoLateral * 0.9)) + 1 // +1 para garantir cobertura completa
+      
+      // Se for número par de passes, adicionar mais um para centralizar
+      if (numPassesLaterais % 2 === 0) numPassesLaterais++
+      
+      // Calcular os deslocamentos X para cada passe
+      passosX = []
+      const metadePasses = Math.floor(numPassesLaterais / 2)
+      
+      // Gerar array com posições X simétricas (incluindo posição central 0)
+      // MAS limitando ao xMaximo calculado
+      for (let i = -metadePasses; i <= metadePasses; i++) {
+        const posicaoX = (i / metadePasses) * xMaximo
+        passosX.push(posicaoX)
+      }
+    }
+    
+    // Ordenar os passes para otimizar o movimento (começar do centro para fora)
+    passosX.sort((a, b) => Math.abs(a) - Math.abs(b))
+    
+    // O deslocamento máximo será usado para cálculos de segurança
+    deslocamentoX = Math.max(...passosX.map(x => Math.abs(x)))
   }
 
   // Calcular o ponto de recuo único para todos os cortes
@@ -86,48 +130,36 @@ export function generateGCode(params: MachiningParams): string[] {
     while (true) {
       // If X displacement is needed, calculate passes
       if (deslocamentoX > 0) {
-        // First pass on positive X side
-        codigoG.push(`G0 X${deslocamentoX.toFixed(3)}`)
-        
-        // Apply Z movement with conical adjustment if enabled
-        let yFinal = yAtual;
-        if (params.chavetaConica) {
-          // Calcular o deslocamento Y com base no ângulo cônico
-          const profundidadeZ = Math.abs(params.profundidadeFinal);
-          const deslocamentoY = profundidadeZ * Math.tan(anguloRadianos);
-          yFinal = yAtual + deslocamentoY;
+        // Executar todos os passes laterais calculados
+        for (const posicaoX of passosX) {
+          // Posicionar em X para este passe
+          codigoG.push(`G0 X${posicaoX.toFixed(3)}`)
           
-          // Movimento combinado Y e Z com ângulo cônico
-          codigoG.push(`G1 Y${yFinal.toFixed(3)} Z${params.profundidadeFinal} F${params.avanco} (Calculando para ${params.anguloConico}° graus)`)
-        } else {
-          codigoG.push(`G1 Z${params.profundidadeFinal} F${params.avanco}`)
+          // Apply Z movement with conical adjustment if enabled
+          let yFinal = yAtual;
+          if (params.chavetaConica) {
+            // Calcular o deslocamento Y com base no ângulo cônico
+            const profundidadeZ = Math.abs(params.profundidadeFinal);
+            const deslocamentoY = profundidadeZ * Math.tan(anguloRadianos);
+            yFinal = yAtual + deslocamentoY;
+            
+            // Movimento combinado Y e Z com ângulo cônico
+            codigoG.push(`G1 Y${yFinal.toFixed(3)} Z${params.profundidadeFinal} F${params.avanco} (Calculando para ${params.anguloConico}° graus)`)
+          } else {
+            codigoG.push(`G1 Z${params.profundidadeFinal} F${params.avanco}`)
+          }
+          
+          // Retract to the same Y point for all cuts
+          codigoG.push(`G0 Y${pontoRecuoY.toFixed(2)}`)
+          
+          // Se não for o último passe, reposicionar para o próximo
+          if (posicaoX !== passosX[passosX.length - 1]) {
+            codigoG.push(`G0 Z${params.pontoInicioZ}`)
+            codigoG.push(`G0 Y${yAtual.toFixed(3)}`)
+          }
         }
         
-        // Retract to the same Y point for all cuts
-        codigoG.push(`G0 Y${pontoRecuoY.toFixed(2)}`)
-        codigoG.push(`G0 Z${params.pontoInicioZ}`)
-
-        // Return to cutting Y position
-        codigoG.push(`G0 Y${yAtual.toFixed(3)}`)
-
-        // Second pass on negative X side
-        codigoG.push(`G0 X${(-deslocamentoX).toFixed(3)}`)
-        
-        // Apply Z movement with conical adjustment if enabled
-        if (params.chavetaConica) {
-          // Calcular o deslocamento Y com base no ângulo cônico
-          const profundidadeZ = Math.abs(params.profundidadeFinal);
-          const deslocamentoY = profundidadeZ * Math.tan(anguloRadianos);
-          yFinal = yAtual + deslocamentoY;
-          
-          // Movimento combinado Y e Z com ângulo cônico
-          codigoG.push(`G1 Y${yFinal.toFixed(3)} Z${params.profundidadeFinal} F${params.avanco} (Calculando para ${params.anguloConico}° graus)`)
-        } else {
-          codigoG.push(`G1 Z${params.profundidadeFinal} F${params.avanco}`)
-        }
-
-        // Retract to the same Y point for all cuts
-        codigoG.push(`G0 Y${pontoRecuoY.toFixed(2)}`)
+        // Finalizar com recuo em Z e retorno a X0
         codigoG.push(`G0 Z${params.pontoInicioZ}`)
         codigoG.push("G0 X0")
       } else {
@@ -234,45 +266,34 @@ export function generateGCode(params: MachiningParams): string[] {
           codigoG.push(`G0 Y${raioFinal.toFixed(3)}`)
 
           if (deslocamentoX > 0) {
-            codigoG.push(`G0 X${deslocamentoX.toFixed(3)}`)
-            
-            // Apply Z movement with conical adjustment if enabled
-            let yFinal = raioFinal;
-            if (params.chavetaConica) {
-              // Calcular o deslocamento Y com base no ângulo cônico
-              const profundidadeZ = Math.abs(params.profundidadeFinal);
-              const deslocamentoY = profundidadeZ * Math.tan(anguloRadianos);
-              yFinal = raioFinal + deslocamentoY;
+            // Executar todos os passes laterais calculados
+            for (const posicaoX of passosX) {
+              // Posicionar em X para este passe
+              codigoG.push(`G0 X${posicaoX.toFixed(3)}`)
               
-              // Movimento combinado Y e Z com ângulo cônico
-              codigoG.push(`G1 Y${yFinal.toFixed(3)} Z${params.profundidadeFinal} F${params.avanco} (Calculando para ${params.anguloConico}° graus)`)
-            } else {
-              codigoG.push(`G1 Z${params.profundidadeFinal} F${params.avanco}`)
-            }
-            
-            // Retract to the same Y point for all cuts
-            codigoG.push(`G0 Y${pontoRecuoY.toFixed(2)}`)
-            codigoG.push(`G0 Z${params.pontoInicioZ}`)
-
-            codigoG.push(`G0 Y${raioFinal.toFixed(3)}`)
-
-            codigoG.push(`G0 X${(-deslocamentoX).toFixed(3)}`)
-            
-            // Apply Z movement with conical adjustment if enabled
-            if (params.chavetaConica) {
-              // Calcular o deslocamento Y com base no ângulo cônico
-              const profundidadeZ = Math.abs(params.profundidadeFinal);
-              const deslocamentoY = profundidadeZ * Math.tan(anguloRadianos);
-              yFinal = raioFinal + deslocamentoY;
+              // Apply Z movement with conical adjustment if enabled
+              let yFinal = raioFinal;
+              if (params.chavetaConica) {
+                // Calcular o deslocamento Y com base no ângulo cônico
+                const profundidadeZ = Math.abs(params.profundidadeFinal);
+                const deslocamentoY = profundidadeZ * Math.tan(anguloRadianos);
+                yFinal = raioFinal + deslocamentoY;
+                
+                // Movimento combinado Y e Z com ângulo cônico
+                codigoG.push(`G1 Y${yFinal.toFixed(3)} Z${params.profundidadeFinal} F${params.avanco} (Calculando para ${params.anguloConico}° graus)`)
+              } else {
+                codigoG.push(`G1 Z${params.profundidadeFinal} F${params.avanco}`)
+              }
               
-              // Movimento combinado Y e Z com ângulo cônico
-              codigoG.push(`G1 Y${yFinal.toFixed(3)} Z${params.profundidadeFinal} F${params.avanco} (Calculando para ${params.anguloConico}° graus)`)
-            } else {
-              codigoG.push(`G1 Z${params.profundidadeFinal} F${params.avanco}`)
+              // Retract to the same Y point for all cuts
+              codigoG.push(`G0 Y${pontoRecuoY.toFixed(2)}`)
+              
+              // Se não for o último passe, reposicionar para o próximo
+              if (posicaoX !== passosX[passosX.length - 1]) {
+                codigoG.push(`G0 Z${params.pontoInicioZ}`)
+                codigoG.push(`G0 Y${raioFinal.toFixed(3)}`)
+              }
             }
-            
-            // Retract to the same Y point for all cuts
-            codigoG.push(`G0 Y${pontoRecuoY.toFixed(2)}`)
           } else {
             // Apply Z movement with conical adjustment if enabled
             let yFinal = raioFinal;

@@ -20,7 +20,7 @@ export function CollapsibleSection({ title, children, defaultOpen = false }: Col
   return (
     <div className="collapsible-section border border-gray-200 dark:border-gray-700 rounded-md mb-4 bg-white dark:bg-gray-800">
       <div
-        className="collapsible-header bg-gray-50 dark:bg-gray-700 p-3 font-bold cursor-pointer flex justify-between items-center"
+        className="collapsible-header bg-gray-50 dark:bg-gray-800 p-3 font-bold cursor-pointer flex justify-between items-center text-gray-800 dark:text-white"
         onClick={() => setIsOpen(!isOpen)}
       >
         {title}

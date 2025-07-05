@@ -1,40 +1,41 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 /**
  * Dark mode toggle button component
- * Allows users to switch between light and dark mode
+ * Uses next-themes for proper theme management
  */
 export default function DarkModeToggle() {
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  const [mounted, setMounted] = useState(false)
+  const { theme, setTheme } = useTheme()
 
+  // useEffect apenas roda no cliente, então agora podemos renderizar com segurança a UI
   useEffect(() => {
-    // Initialize state from body class
-    setIsDarkMode(document.body.classList.contains("dark"))
+    setMounted(true)
   }, [])
 
-  const toggleDarkMode = () => {
-    const newDarkMode = !isDarkMode
-    setIsDarkMode(newDarkMode)
-
-    if (newDarkMode) {
-      document.body.classList.add("dark")
-    } else {
-      document.body.classList.remove("dark")
-    }
-
-    // Save preference to localStorage
-    localStorage.setItem("darkMode", newDarkMode.toString())
+  if (!mounted) {
+    return null
   }
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark")
+  }
+
+  const isDark = theme === "dark"
 
   return (
     <button
-      className="dark-mode fixed bottom-5 right-5 bg-dark text-white border-none rounded-full w-12 h-12 flex items-center justify-center cursor-pointer shadow-md z-50"
-      onClick={toggleDarkMode}
-      aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+      className="fixed bottom-6 right-6 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-full w-14 h-14 flex items-center justify-center cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 z-50 group hover:scale-105"
+      onClick={toggleTheme}
+      aria-label={isDark ? "Mudar para tema claro" : "Mudar para tema escuro"}
+      title={isDark ? "Mudar para tema claro" : "Mudar para tema escuro"}
     >
-      <span className="dark-mode-icon text-2xl">{isDarkMode ? "🌙" : "☀️"}</span>
+      <span className="text-2xl transition-transform duration-200 group-hover:scale-110">
+        {isDark ? "☀️" : "🌙"}
+      </span>
     </button>
   )
 }

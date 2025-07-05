@@ -8,6 +8,22 @@ import { SimulationControls } from "@/components/visualization/SimulationControl
 import { processGCodeForSimulation } from "@/lib/simulation-processor"
 import { showMessage } from "@/lib/utils"
 
+// Definir tipos para a API do PyWebView
+interface PyWebViewResponse {
+  success: boolean;
+  message: string;
+}
+
+declare global {
+  interface Window {
+    pywebview?: {
+      api: {
+        save_file: (content: string, filename: string) => Promise<PyWebViewResponse>;
+      };
+    };
+  }
+}
+
 /**
  * Output panel component that displays the generated G-code and visualization
  * Allows users to simulate and visualize the machining process
@@ -181,12 +197,40 @@ export default function OutputPanel() {
   // Save G-code to file
   const saveGCode = () => {
     if (!gCode || gCode.length === 0) {
-      showMessage("Nenhum código gerado para salvar!", "error")
+      showMessage("Nenhum código G para salvar!", "error")
       return
     }
 
     const codigoTexto = gCode.join("\n")
-    const blob = new Blob([codigoTexto], { type: "text/plain" })
+    
+    // Verifica se estamos no ambiente WebView
+    if (window.pywebview) {
+      try {
+        // Usa a API do PyWebView para salvar o arquivo
+        window.pywebview.api.save_file(codigoTexto, "codigo_entalhy_cnc.nc")
+          .then(res => {
+            if (res.success) {
+              showMessage(res.message, "success")
+            } else {
+              showMessage(res.message, "error")
+            }
+          })
+          .catch(err => {
+            showMessage("Erro ao salvar arquivo: " + err, "error")
+            saveFileFallback(codigoTexto)
+          })
+      } catch (e) {
+        showMessage("Não foi possível acessar a API de salvamento: " + e, "error")
+        saveFileFallback(codigoTexto)
+      }
+    } else {
+      saveFileFallback(codigoTexto)
+    }
+  }
+
+  // Fallback para salvar arquivo no navegador convencional
+  const saveFileFallback = (content: string) => {
+    const blob = new Blob([content], { type: "text/plain" })
     const url = URL.createObjectURL(blob)
 
     const a = document.createElement("a")
@@ -203,12 +247,12 @@ export default function OutputPanel() {
   return (
     <div className="output-panel flex-1 flex flex-col max-w-full">
       {/* Área de código G */}
-      <div className="code-output bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-5 shadow-md h-72 overflow-auto font-mono mb-5 transition-colors">
+      <div className="code-output bg-card shadow-lg rounded-lg p-4 sm:p-5 h-72 overflow-auto font-mono mb-5 border border-border">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-gray-800 dark:text-gray-200 text-lg font-semibold">Código G Gerado</h2>
+          <h2 className="text-foreground text-lg font-semibold">Código G Gerado</h2>
           {gCode && gCode.length > 0 && (
             <button 
-              className="text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 text-sm flex items-center transition-colors"
+              className="text-primary hover:text-primary/90 text-sm flex items-center transition-colors hover:underline"
               onClick={saveGCode}
             >
               <span className="mr-1">💾</span> Salvar
@@ -216,27 +260,27 @@ export default function OutputPanel() {
           )}
         </div>
         
-        <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded border border-gray-200 dark:border-gray-700 transition-colors">
+        <div className="bg-muted/50 p-3 rounded border border-border">
           {gCode && gCode.length > 0 ? (
-            <pre className="text-sm text-gray-800 dark:text-gray-200 overflow-x-auto">{gCode.join("\n")}</pre>
+            <pre className="text-sm text-foreground overflow-x-auto">{gCode.join("\n")}</pre>
           ) : (
-            <em className="text-gray-500 dark:text-gray-400 block text-center py-4">O código G será gerado aqui...</em>
+            <em className="text-muted-foreground block text-center py-4">O código G será gerado aqui...</em>
           )}
         </div>
       </div>
 
       {/* Área de visualização */}
-      <div className="visualization bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-5 shadow-md flex-grow relative transition-colors">
-        <div className="flex flex-wrap justify-between items-center mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-blue-600 dark:text-blue-400 text-xl font-semibold">
+      <div className="visualization bg-card rounded-lg p-4 sm:p-5 shadow-lg flex-grow relative border border-border">
+        <div className="flex flex-wrap justify-between items-center mb-4 pb-2 border-b border-border">
+          <h2 className="text-destructive dark:text-destructive/90 text-xl font-semibold">
             Visualização da Simulação
           </h2>
 
           <div className="view-toggle">
             <button
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${is3DMode 
-                ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300" 
-                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"}`}
+                ? "bg-accent text-accent-foreground" 
+                : "bg-secondary text-secondary-foreground"}`}
               onClick={() => setIs3DMode((prev) => !prev)}
             >
               <span className="mr-1">{is3DMode ? "3D" : "2D"}</span> 
@@ -245,7 +289,7 @@ export default function OutputPanel() {
           </div>
         </div>
 
-        <div className="canvas-container relative w-full h-[250px] sm:h-[350px] border border-gray-200 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900 dark:border-gray-700 shadow-inner transition-all">
+        <div className="canvas-container relative w-full h-[250px] sm:h-[350px] border border-border rounded-lg overflow-hidden bg-muted/30 shadow-inner">
           {is3DMode ? (
             <Canvas3D simulationFrames={simulationFrames || []} currentFrame={currentFrame} />
           ) : (
@@ -259,7 +303,7 @@ export default function OutputPanel() {
           
           {/* Indicador de frame atual */}
           {simulationFrames && simulationFrames.length > 0 && (
-            <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded-md text-xs">
+            <div className="absolute bottom-2 right-2 bg-black/70 dark:bg-black/80 text-white px-2 py-1 rounded-md text-xs">
               Frame: {currentFrame + 1}/{simulationFrames.length}
             </div>
           )}
